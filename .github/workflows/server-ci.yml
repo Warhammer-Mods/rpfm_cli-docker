@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@v7
       - name: Test upstream update tooling
         run: python3 -m unittest discover -s server/tests -v
       - name: Read pinned version
