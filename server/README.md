@@ -76,7 +76,7 @@ jobs:
   mod-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
       - uses: Warhammer-Mods/rpfm_cli-docker/server@YOUR_REVIEWED_COMMIT
         id: rpfm
       - name: Run your pack script
@@ -118,7 +118,9 @@ On Windows, `py smoke_test.py` is an alternative. The test checks the exact
 server version, HTTP endpoints, MCP initialization/tool discovery, WH3 schema
 loading and creation/listing/closure of an empty in-memory pack. It does not
 save files or touch existing packs. The GitHub Actions workflow builds the
-image and runs this same test; it never publishes an image.
+image and additionally uses `--roundtrip` to save and reopen a temporary pack
+under the mounted job workspace, checking container-to-host file permissions.
+The temporary directory is removed afterward. It never publishes an image.
 
 ## Stop and update
 

@@ -2,6 +2,8 @@
 """Check HTTP, MCP negotiation, schemas and basic pack lifecycle using stdlib."""
 import argparse
 import json
+from pathlib import Path
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -76,6 +78,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default="http://127.0.0.1:45127")
     parser.add_argument("--expected-version", default="5.1.1")
+    parser.add_argument("--roundtrip", action="store_true",
+                        help="Save/reopen a temporary pack under the mounted job workspace")
     args = parser.parse_args()
     base = args.url.rstrip("/")
     for attempt in range(60):
@@ -110,14 +114,26 @@ def main():
     client.tool("set_game_selected", {"game_name": "warhammer_3",
                                        "rebuild_dependencies": False})
     tables = client.tool("get_custom_table_list")
-    assert "main_units_tables" in json.dumps(tables), tables
+    # This API lists only custom start_pos_/twad_ tables, not regular DB tables.
+    assert "twad_key_deletes_tables" in json.dumps(tables), tables
     before = client.tool("list_open_packs")
-    client.tool("new_pack")
+    created = client.tool("new_pack")
     after = client.tool("list_open_packs")
     assert after != before, "New pack did not appear in this session"
+    if args.roundtrip:
+        response = json.loads(next(block["text"] for block in created["content"]
+                                   if block.get("type") == "text"))
+        pack_key = response["String"]
+        with tempfile.TemporaryDirectory(prefix=".rpfm-smoke-", dir=Path.cwd()) as folder:
+            path = Path(folder) / "smoke.pack"
+            container_path = "/work/" + Path(folder).name + "/smoke.pack"
+            client.tool("save_pack_as", {"pack_key": pack_key, "path": container_path})
+            assert path.read_bytes().startswith(b"PFH"), "Missing pack header"
+            client.tool("close_all_packs")
+            client.tool("open_packfiles", {"paths": [container_path]})
     client.tool("close_all_packs")
     print(f"PASS: RPFM {version['version']}, HTTP, MCP ({len(tools)} tools), "
-          "WH3 schema and pack lifecycle")
+          "WH3 schema and pack lifecycle" + (", disk roundtrip" if args.roundtrip else ""))
 
 
 if __name__ == "__main__":
