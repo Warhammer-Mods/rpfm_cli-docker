@@ -106,6 +106,46 @@ Actions cache, then pass the loaded local image through the `image` input.
 The supplied `server-ci.yml` workflow demonstrates this without publishing.
 The action also accepts a `port` input if 45127 is already in use.
 
+## Automatic release checks
+
+`Update RPFM stable releases` checks the official latest stable release twice
+daily at 05:23 and 17:23 UTC (08:23 and 20:23 Moscow time). GitHub schedules
+can run later during busy periods. It also supports **Run workflow** with
+`force_build` to rebuild the current release on demand.
+
+`upstream.json` records the current version, release tag, exact source commit
+and matching schema submodule commit. The resolver uses the release tag rather
+than `target_commitish`, checks the Cargo version, and rejects prereleases,
+downgrades, invalid hashes or changed schema layout.
+
+For a new release, the workflow updates the candidate pins in its job,
+builds the image, and runs the live MCP/WH3 schema/pack disk roundtrip checks.
+Only after success does a separate job open `automation/rpfm-VERSION` as an
+update PR. The write-capable job never builds or runs upstream code. Existing
+PRs for the same source and schema commits avoid repeated builds.
+
+The tested Docker image is available as a workflow artifact for seven days.
+Download and extract the artifact ZIP, then import the contained image:
+
+```sh
+docker load --input rpfm-server.tar.gz
+```
+
+The action's `image` input can use that loaded `local/rpfm-server:VERSION`
+image. This automation does not publish GHCR images or merge update PRs.
+Merging a version PR updates the default action build and Compose version.
+Existing workflows pinned to an older action commit continue to use that
+commit until you update their `uses:` reference.
+
+The workflow uses the repository's `GITHUB_TOKEN` and needs no additional
+secret. To allow its update PRs, repository/organization settings must permit
+**Actions > General > Allow GitHub Actions to create and approve pull requests**.
+If this setting is disabled, the tested image artifact and update branch are
+still retained, and the PR step reports the required setting.
+
+The old scheduled CLI watcher is now manual-only, since current RPFM releases
+no longer contain that CLI. It remains available for historical builds.
+
 ## Smoke test
 
 With Python 3 installed on the host, run:

@@ -13,6 +13,11 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7.0.1
+      - name: Test upstream update tooling
+        run: python3 -m unittest discover -s server/tests -v
+      - name: Read pinned version
+        id: version
+        run: python3 server/upstream.py version --output "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v4.4.1
       - name: Build the server image (without publishing)
         uses: docker/build-push-action@v7.4.0
@@ -20,14 +25,14 @@ jobs:
           context: server
           load: true
           push: false
-          tags: local/rpfm-server:5.1.1
+          tags: local/rpfm-server:${{ steps.version.outputs.version }}
           cache-from: type=gha,scope=rpfm-server
           cache-to: type=gha,mode=max,scope=rpfm-server
       - name: Start RPFM for this job
         id: rpfm
         uses: ./server
         with:
-          image: local/rpfm-server:5.1.1
+          image: local/rpfm-server:${{ steps.version.outputs.version }}
       - name: Run MCP smoke test
         run: |
           python3 server/smoke_test.py --roundtrip

@@ -42,7 +42,8 @@ runs:
         name="rpfm-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${RANDOM}"
         image="${RPFM_INPUT_IMAGE}"
         if [[ -z "${image}" ]]; then
-          image="local/${name}:5.1.1"
+          version=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "${RPFM_ACTION_PATH}/upstream.json")
+          image="local/${name}:${version}"
           docker build --tag "${image}" "${RPFM_ACTION_PATH}"
         fi
         config=$(mktemp -d "${RUNNER_TEMP}/rpfm-config.XXXXXX")
