@@ -77,7 +77,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: Warhammer-Mods/rpfm_cli-docker/server@YOUR_REVIEWED_COMMIT
+      - uses: Warhammer-Mods/rpfm_cli-docker/server@d8e9d8c2cea27c04657431b70f3cf890aeffd8d9
         id: rpfm
       - name: Run your pack script
         env:
@@ -95,7 +95,7 @@ jobs:
         run: docker rm --force "$RPFM_CONTAINER"
 ```
 
-Replace `YOUR_REVIEWED_COMMIT` with the commit containing this action.
+This example pins the action to the commit validated by the workflow below.
 `scripts/build_mod.py` and `output/*.pack` illustrate where your own build
 script and outputs go; they are not included. Your script needs an MCP or
 WebSocket client, since the former CLI arguments are not supported. Use
@@ -163,9 +163,15 @@ The build files, shell syntax, YAML and smoke-test source were checked locally.
 Entrypoint supervision was exercised with substitute processes: server failure,
 proxy failure and SIGTERM all propagated their expected exit codes and cleaned
 up the companion process. Initial schema seeding was also checked.
-The preparation environment had no Docker engine, so the actual image build,
-runtime dependency check and live MCP smoke test still need to pass on Docker
-or in the supplied GitHub Actions workflow before treating this as tested.
+The preparation environment had no Docker engine. The actual image build,
+runtime dependency check and live MCP smoke test subsequently passed on a
+GitHub-hosted Linux runner, including 155 MCP tools, WH3 schema loading,
+pack creation and saving/reopening through the mounted workspace.
+
+[Successful CI run](https://github.com/Warhammer-Mods/rpfm_cli-docker/actions/runs/37256097535)
+validated commit `d8e9d8c2cea27c04657431b70f3cf890aeffd8d9`.
+This validates the headless backend workflow, not every RPFM operation or
+in-game compatibility of packs created with it.
 
 RPFM is created by [Frodo45127](https://github.com/Frodo45127/rpfm) and its
 contributors, under the MIT license. See the root repository LICENSE.
