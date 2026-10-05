@@ -1,8 +1,6 @@
-name: Get latest upstream version
+name: Legacy CLI upstream build (manual)
 
 on:
-  schedule:
-    - cron:  '0 5,17 * * *'
   workflow_dispatch:
     inputs:
       force_build:

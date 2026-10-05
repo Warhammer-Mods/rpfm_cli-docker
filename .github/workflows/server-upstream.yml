@@ -1,0 +1,185 @@
+name: Update RPFM stable releases
+on:
+  schedule:
+    - cron: '23 5,17 * * *'
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: Build and test even when the current release is already pinned
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - '.github/workflows/server-upstream.yml'
+      - 'server/upstream.py'
+      - 'server/upstream.json'
+      - 'server/tests/**'
+permissions:
+  contents: read
+concurrency:
+  group: rpfm-upstream-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'scheduled' }}
+  cancel-in-progress: false
+jobs:
+  check-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      changed: ${{ steps.plan.outputs.changed }}
+      proposed: ${{ steps.pending.outputs.proposed }}
+      version: ${{ steps.plan.outputs.version }}
+      rpfm_commit: ${{ steps.plan.outputs.rpfm_commit }}
+      schema_commit: ${{ steps.plan.outputs.schema_commit }}
+      image_artifact: ${{ steps.image.outputs.artifact-url }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Test release resolver and update rules
+        run: python3 -m unittest discover -s server/tests -v
+      - name: Fetch stable release and apply candidate pins
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 server/upstream.py check --apply --output "$GITHUB_OUTPUT"
+      - name: Avoid rebuilding an already proposed release
+        id: pending
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RPFM_VERSION: ${{ steps.plan.outputs.version }}
+          RPFM_COMMIT: ${{ steps.plan.outputs.rpfm_commit }}
+          SCHEMA_COMMIT: ${{ steps.plan.outputs.schema_commit }}
+          CHANGED: ${{ steps.plan.outputs.changed }}
+          FORCE: ${{ inputs.force_build == true }}
+          IS_PR: ${{ github.event_name == 'pull_request' }}
+        run: |
+          body=$(gh pr list --head "automation/rpfm-${RPFM_VERSION}" --state open --json body --jq '.[0].body // ""')
+          proposed=false
+          if [[ "$body" == *"${RPFM_COMMIT}"* && "$body" == *"${SCHEMA_COMMIT}"* ]]; then
+            proposed=true
+          fi
+          build=false
+          if [[ "$FORCE" == true || "$IS_PR" == true || ( "$CHANGED" == true && "$proposed" == false ) ]]; then
+            build=true
+          fi
+          echo "proposed=$proposed" >> "$GITHUB_OUTPUT"
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+          echo "Release ${RPFM_VERSION}; changed=$CHANGED; already proposed=$proposed; build=$build" >> "$GITHUB_STEP_SUMMARY"
+      - uses: docker/setup-buildx-action@v4.4.1
+        if: steps.pending.outputs.build == 'true'
+      - name: Build candidate image
+        if: steps.pending.outputs.build == 'true'
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: server
+          load: true
+          push: false
+          tags: local/rpfm-server:${{ steps.plan.outputs.version }}
+          cache-from: type=gha,scope=rpfm-server
+          cache-to: type=gha,mode=max,scope=rpfm-server
+      - name: Start candidate backend
+        if: steps.pending.outputs.build == 'true'
+        id: rpfm
+        uses: ./server
+        with:
+          image: local/rpfm-server:${{ steps.plan.outputs.version }}
+      - name: Verify MCP, WH3 schemas and pack disk roundtrip
+        if: steps.pending.outputs.build == 'true'
+        env:
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: python3 server/smoke_test.py --expected-version "$VERSION" --roundtrip
+      - name: Export tested image
+        if: steps.pending.outputs.build == 'true' && github.event_name != 'pull_request'
+        env:
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: docker save "local/rpfm-server:${VERSION}" | gzip > "$RUNNER_TEMP/rpfm-server.tar.gz"
+      - name: Retain tested image for download
+        if: steps.pending.outputs.build == 'true' && github.event_name != 'pull_request'
+        id: image
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: rpfm-server-${{ steps.plan.outputs.version }}-${{ steps.plan.outputs.rpfm_commit }}
+          path: ${{ runner.temp }}/rpfm-server.tar.gz
+          retention-days: 7
+          compression-level: 0
+      - name: Prepare tested version update
+        if: steps.plan.outputs.changed == 'true' && steps.pending.outputs.build == 'true' && github.event_name != 'pull_request'
+        run: |
+          git diff --binary -- server/upstream.json server/Dockerfile server/action.yml server/compose.yaml server/smoke_test.py server/README.md > "$RUNNER_TEMP/rpfm-update.patch"
+          test -s "$RUNNER_TEMP/rpfm-update.patch"
+      - name: Retain update patch
+        if: steps.plan.outputs.changed == 'true' && steps.pending.outputs.build == 'true' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: rpfm-version-update
+          path: ${{ runner.temp }}/rpfm-update.patch
+          retention-days: 7
+      - name: Container logs and cleanup
+        if: always() && steps.rpfm.outputs.container != ''
+        env:
+          RPFM_CONTAINER: ${{ steps.rpfm.outputs.container }}
+        run: |
+          docker logs "$RPFM_CONTAINER" || true
+          docker rm --force "$RPFM_CONTAINER" || true
+
+  propose-update:
+    needs: check-and-test
+    if: needs.check-and-test.outputs.changed == 'true' && needs.check-and-test.outputs.proposed != 'true' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          name: rpfm-version-update
+          path: ${{ runner.temp }}/rpfm-update
+      - name: Commit tested pins and open an update PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check-and-test.outputs.version }}
+          RPFM_COMMIT: ${{ needs.check-and-test.outputs.rpfm_commit }}
+          SCHEMA_COMMIT: ${{ needs.check-and-test.outputs.schema_commit }}
+          IMAGE_ARTIFACT: ${{ needs.check-and-test.outputs.image_artifact }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          branch="automation/rpfm-${VERSION}"
+          git apply --check "$RUNNER_TEMP/rpfm-update/rpfm-update.patch"
+          git apply "$RUNNER_TEMP/rpfm-update/rpfm-update.patch"
+          git checkout -b "$branch"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add server/upstream.json server/Dockerfile server/action.yml server/compose.yaml server/smoke_test.py server/README.md
+          # A previous attempt may have pushed the branch but lacked permission
+          # to create its PR. Reuse an identical tree; never overwrite edits.
+          prior=$(git ls-remote --heads origin "refs/heads/$branch" | awk '{print $1}')
+          if [[ -n "$prior" ]]; then
+            git fetch origin "$prior"
+            if [[ "$(git rev-parse 'FETCH_HEAD^{tree}')" != "$(git write-tree)" ]]; then
+              echo 'Existing update branch differs from the tested patch; review it before retrying.' >&2
+              exit 1
+            fi
+          else
+            git commit -m "Update RPFM Server to ${VERSION}"
+            git push origin "$branch"
+          fi
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          e = os.environ
+          body = (f"Update RPFM Server to stable {e['VERSION']}.\n\n"
+                  f"Source commit: `{e['RPFM_COMMIT']}`\n"
+                  f"Schema commit: `{e['SCHEMA_COMMIT']}`\n\n"
+                  "The candidate Docker build, startup, MCP discovery, WH3 schema check and pack disk roundtrip passed before this PR was created.\n\n"
+                  f"Validation run: https://github.com/{e['GITHUB_REPOSITORY']}/actions/runs/{e['GITHUB_RUN_ID']}\n"
+                  f"Tested image artifact (7-day retention): {e['IMAGE_ARTIFACT']}\n\n"
+                  "Review upstream changes before merging. This automation does not merge PRs or publish container images.")
+          Path(os.environ['RUNNER_TEMP'], 'rpfm-pr-body.md').write_text(body)
+          PY
+          if ! gh pr create --head "$branch" --base "$BASE_BRANCH" \
+            --title "Update RPFM Server to ${VERSION}" --body-file "$RUNNER_TEMP/rpfm-pr-body.md"; then
+            echo 'PR creation failed. Check Settings > Actions > General > Allow GitHub Actions to create and approve pull requests. The tested image artifact and update branch remain available.' >&2
+            exit 1
+          fi
