@@ -66,6 +66,9 @@ do not require a full game installation.
 
 ## GitHub Actions
 
+The example targets release `v5.1.1-server.2`; its tag becomes available when
+that release is created. Pin a full commit SHA for immutable builds.
+
 Use the root composite action or the `/server` action on a Linux runner. It builds the
 pinned backend unless given a prebuilt image, waits for readiness, and mounts
 the job's repository at `/work`. It runs as the runner's UID/GID so saved packs
@@ -78,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: Warhammer-Mods/rpfm-server-docker/server@d8e9d8c2cea27c04657431b70f3cf890aeffd8d9
+      - uses: Warhammer-Mods/rpfm-server-docker/server@v5.1.1-server.2
         id: rpfm
       - name: Run your pack script
         env:

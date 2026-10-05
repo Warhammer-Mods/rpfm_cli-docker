@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: Warhammer-Mods/rpfm-server-docker@master
+      - uses: Warhammer-Mods/rpfm-server-docker@v5.1.1-server.2
         id: rpfm
       - name: Run your pack script
         env:
@@ -26,7 +26,8 @@ jobs:
         run: docker rm --force "$RPFM_CONTAINER"
 ```
 
-Replace `master` with a released tag or commit SHA for reproducible builds.
+The example targets release `v5.1.1-server.2`; its tag becomes available when
+that release is created. Pin a full commit SHA for immutable builds.
 `scripts/build_mod.py` is your own MCP client script; it is not included.
 See [the smoke test](server/smoke_test.py) for a Python standard-library MCP
 client example.
