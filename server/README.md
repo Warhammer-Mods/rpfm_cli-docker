@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: Warhammer-Mods/rpfm_cli-docker/server@d8e9d8c2cea27c04657431b70f3cf890aeffd8d9
+      - uses: Warhammer-Mods/rpfm-server-docker/server@d8e9d8c2cea27c04657431b70f3cf890aeffd8d9
         id: rpfm
       - name: Run your pack script
         env:
@@ -209,7 +209,7 @@ runtime dependency check and live MCP smoke test subsequently passed on a
 GitHub-hosted Linux runner, including 155 MCP tools, WH3 schema loading,
 pack creation and saving/reopening through the mounted workspace.
 
-[Successful CI run](https://github.com/Warhammer-Mods/rpfm_cli-docker/actions/runs/37256097535)
+[Successful CI run](https://github.com/Warhammer-Mods/rpfm-server-docker/actions/runs/37256097535)
 validated commit `d8e9d8c2cea27c04657431b70f3cf890aeffd8d9`.
 This validates the headless backend workflow, not every RPFM operation or
 in-game compatibility of packs created with it.

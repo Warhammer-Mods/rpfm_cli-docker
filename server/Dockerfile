@@ -33,7 +33,7 @@ FROM debian:bookworm-slim AS runtime
 ARG RPFM_COMMIT=5204dab9e9a9376c438deabed8489de3bc319599
 LABEL org.opencontainers.image.title="RPFM Server" \
     org.opencontainers.image.version="5.1.1" \
-    org.opencontainers.image.source="https://github.com/Warhammer-Mods/rpfm_cli-docker" \
+    org.opencontainers.image.source="https://github.com/Warhammer-Mods/rpfm-server-docker" \
     org.opencontainers.image.revision="${RPFM_COMMIT}" \
     org.opencontainers.image.licenses="MIT"
 RUN apt-get update && apt-get install -y --no-install-recommends \

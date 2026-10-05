@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: Warhammer-Mods/rpfm_cli-docker@master
+      - uses: Warhammer-Mods/rpfm-server-docker@master
         id: rpfm
       - name: Run your pack script
         env:
@@ -38,6 +38,14 @@ cleanup step. The desktop GUI and former CLI arguments are not provided.
 See [the server guide](server/README.md) for Docker Compose, schemas, pack paths,
 client usage, CI validation and automatic stable-release builds. New releases
 are checked twice daily, built and tested before an update PR is opened.
+
+## Repository rename
+
+The repository is now `Warhammer-Mods/rpfm-server-docker`. Update existing
+workflow `uses:` references from `Warhammer-Mods/rpfm_cli-docker` to the new
+name, keeping the same subdirectory and tag or commit. GitHub Actions does
+not follow repository-name redirects. The historical CLI image remains at
+`ghcr.io/warhammer-mods/rpfm_cli-docker:develop`.
 
 ## Migration from the legacy CLI
 
