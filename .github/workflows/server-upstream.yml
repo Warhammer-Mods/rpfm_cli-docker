@@ -142,6 +142,7 @@ jobs:
           RPFM_COMMIT: ${{ needs.check-and-test.outputs.rpfm_commit }}
           SCHEMA_COMMIT: ${{ needs.check-and-test.outputs.schema_commit }}
           IMAGE_ARTIFACT: ${{ needs.check-and-test.outputs.image_artifact }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
           branch="automation/rpfm-${VERSION}"
@@ -151,8 +152,19 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add server/upstream.json server/Dockerfile server/action.yml server/compose.yaml server/smoke_test.py server/README.md
-          git commit -m "Update RPFM Server to ${VERSION}"
-          git push --force-with-lease origin "$branch"
+          # A previous attempt may have pushed the branch but lacked permission
+          # to create its PR. Reuse an identical tree; never overwrite edits.
+          prior=$(git ls-remote --heads origin "refs/heads/$branch" | awk '{print $1}')
+          if [[ -n "$prior" ]]; then
+            git fetch origin "$prior"
+            if [[ "$(git rev-parse 'FETCH_HEAD^{tree}')" != "$(git write-tree)" ]]; then
+              echo 'Existing update branch differs from the tested patch; review it before retrying.' >&2
+              exit 1
+            fi
+          else
+            git commit -m "Update RPFM Server to ${VERSION}"
+            git push origin "$branch"
+          fi
           python3 - <<'PY'
           import os
           from pathlib import Path
@@ -166,7 +178,7 @@ jobs:
                   "Review upstream changes before merging. This automation does not merge PRs or publish container images.")
           Path(os.environ['RUNNER_TEMP'], 'rpfm-pr-body.md').write_text(body)
           PY
-          if ! gh pr create --head "$branch" --base "${{ github.event.repository.default_branch }}" \
+          if ! gh pr create --head "$branch" --base "$BASE_BRANCH" \
             --title "Update RPFM Server to ${VERSION}" --body-file "$RUNNER_TEMP/rpfm-pr-body.md"; then
             echo 'PR creation failed. Check Settings > Actions > General > Allow GitHub Actions to create and approve pull requests. The tested image artifact and update branch remain available.' >&2
             exit 1
