@@ -1,4 +1,9 @@
 # rpfm_cli, Dockerized
+
+For RPFM 5.1.1, which replaces the old CLI with RPFM Server, see the
+[new server container](server/README.md). The files below retain the legacy
+CLI interface.
+
 Usage:
 ```sh
 docker run ghcr.io/warhammer-mods/rpfm_cli-docker --help

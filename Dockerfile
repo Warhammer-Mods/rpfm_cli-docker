@@ -19,7 +19,6 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 RUN git clone \
       -b ${VERSION} \
-      --recursive \
       --depth 1 \
       ${UPSTREAM} \
     && cd rpfm \

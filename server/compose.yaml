@@ -1,0 +1,18 @@
+services:
+  rpfm:
+    image: local/rpfm-server:5.1.1
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:45127:45128"
+    volumes:
+      - rpfm-config:/config
+      - ./work:/work
+    restart: unless-stopped
+    stop_grace_period: 15s
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  rpfm-config:
