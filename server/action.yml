@@ -1,0 +1,76 @@
+name: RPFM Server
+description: Start RPFM 5.1.1 for pack operations over MCP or WebSocket in a Linux Actions job.
+inputs:
+  image:
+    description: Optional prebuilt image. If empty, build the bundled pinned Dockerfile.
+    required: false
+    default: ''
+  port:
+    description: Localhost port on the runner.
+    required: false
+    default: '45127'
+outputs:
+  url:
+    description: Base HTTP URL for this job.
+    value: ${{ steps.start.outputs.url }}
+  mcp-url:
+    description: Streamable HTTP MCP endpoint.
+    value: ${{ steps.start.outputs.mcp-url }}
+  container:
+    description: Container name; remove it in an always() cleanup step.
+    value: ${{ steps.start.outputs.container }}
+runs:
+  using: composite
+  steps:
+    - name: Build or start the RPFM backend
+      id: start
+      shell: bash
+      env:
+        RPFM_ACTION_PATH: ${{ github.action_path }}
+        RPFM_INPUT_IMAGE: ${{ inputs.image }}
+        RPFM_INPUT_PORT: ${{ inputs.port }}
+      run: |
+        set -euo pipefail
+        if [[ "${RUNNER_OS}" != Linux ]]; then
+          echo 'RPFM Server action requires a Linux runner with Docker.' >&2
+          exit 1
+        fi
+        if [[ ! "${RPFM_INPUT_PORT}" =~ ^[0-9]{1,5}$ ]] || (( 10#${RPFM_INPUT_PORT} < 1024 || 10#${RPFM_INPUT_PORT} > 65535 )); then
+          echo 'port must be an integer from 1024 to 65535' >&2
+          exit 1
+        fi
+        name="rpfm-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${RANDOM}"
+        image="${RPFM_INPUT_IMAGE}"
+        if [[ -z "${image}" ]]; then
+          image="local/${name}:5.1.1"
+          docker build --tag "${image}" "${RPFM_ACTION_PATH}"
+        fi
+        config=$(mktemp -d "${RUNNER_TEMP}/rpfm-config.XXXXXX")
+        url="http://127.0.0.1:${RPFM_INPUT_PORT}"
+        docker run --detach --name "${name}" \
+          --user "$(id -u):$(id -g)" \
+          --env HOME=/tmp \
+          --publish "127.0.0.1:${RPFM_INPUT_PORT}:45128" \
+          --volume "${config}:/config" \
+          --volume "${GITHUB_WORKSPACE}:/work" \
+          "${image}"
+        echo "container=${name}" >> "${GITHUB_OUTPUT}"
+        echo "url=${url}" >> "${GITHUB_OUTPUT}"
+        echo "mcp-url=${url}/mcp" >> "${GITHUB_OUTPUT}"
+        ready=false
+        for attempt in {1..60}; do
+          if curl --fail --silent "${url}/version" > /dev/null; then
+            ready=true
+            break
+          fi
+          if [[ "$(docker inspect --format '{{.State.Running}}' "${name}")" != true ]]; then
+            break
+          fi
+          sleep 1
+        done
+        if [[ "${ready}" != true ]]; then
+          docker logs "${name}" >&2
+          docker rm --force "${name}"
+          exit 1
+        fi
+        curl --fail --silent "${url}/version"
