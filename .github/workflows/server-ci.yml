@@ -47,3 +47,33 @@ jobs:
             docker logs "${RPFM_CONTAINER}" || true
             docker rm --force "${RPFM_CONTAINER}" || true
           fi
+
+  bundled-root-action:
+    name: Root action without a prebuilt image
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read pinned version
+        id: version
+        run: python3 server/upstream.py version --output "$GITHUB_OUTPUT"
+      # Deliberately omit `with.image` and any separate image build. This must
+      # exercise the root action's manifest lookup and bundled Docker context.
+      - name: Build and start through the root action
+        id: rpfm
+        uses: ./
+      - name: Verify the default-built server and pack disk roundtrip
+        env:
+          RPFM_URL: ${{ steps.rpfm.outputs.url }}
+          RPFM_MCP_URL: ${{ steps.rpfm.outputs.mcp-url }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          test "$RPFM_MCP_URL" = "$RPFM_URL/mcp"
+          python3 server/smoke_test.py --url "$RPFM_URL" --expected-version "$VERSION" --roundtrip
+      - name: Container logs and cleanup
+        if: always() && steps.rpfm.outputs.container != ''
+        env:
+          RPFM_CONTAINER: ${{ steps.rpfm.outputs.container }}
+        run: |
+          docker logs "$RPFM_CONTAINER" || true
+          docker rm --force "$RPFM_CONTAINER" || true
