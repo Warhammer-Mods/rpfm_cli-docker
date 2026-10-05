@@ -75,9 +75,13 @@ def apply_update(root, current, candidate):
     docker = replace_exact(docker, 'image.version="' + current["version"] + '"',
                            'image.version="' + candidate["version"] + '"')
     replacements["server/Dockerfile"] = docker
-    action = (root / "server/action.yml").read_text()
-    action = replace_exact(action, "Start RPFM " + current["version"], "Start RPFM " + candidate["version"])
-    replacements["server/action.yml"] = action
+    for action_path in ("action.yml", "server/action.yml"):
+        action = (root / action_path).read_text()
+        replacements[action_path] = replace_exact(
+            action, "Start RPFM " + current["version"], "Start RPFM " + candidate["version"])
+    readme = (root / "README.md").read_text()
+    replacements["README.md"] = replace_exact(
+        readme, "**RPFM " + current["version"] + "**", "**RPFM " + candidate["version"] + "**")
     compose = (root / "server/compose.yaml").read_text()
     replacements["server/compose.yaml"] = replace_exact(
         compose, "local/rpfm-server:" + current["version"], "local/rpfm-server:" + candidate["version"])

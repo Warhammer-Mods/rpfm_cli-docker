@@ -1,0 +1,45 @@
+name: 'RPFM CLI Docker'
+description: 'Manipulate Total War™ games packfiles with command line interface.'
+branding:
+  icon: 'package'
+  color: 'orange'
+inputs:
+    game:
+      description: |
+        Game the packfile is for. Can be one of the following:
+          arena
+          attila
+          empire
+          napoleon
+          rome_2
+          shogun_2
+          three_kingdoms
+          thrones_of_britannia
+          troy
+          warhammer
+          warhammer_2
+          warhammer_3
+      required: true
+      default: warhammer_3
+    options:
+      description: rpfm_cli options, such as `-v|--verbose`, `-V|--version`, or `-h|--help`
+      required: false
+    subcommand:
+      description: |
+        rpfm_cli subcommand to use. Can be one of the following:
+          anim-pack
+          dependencies
+          help
+          pack
+      required: true
+      default: pack
+    run:
+      description: 'Subcommand options string to pass'
+      required: true
+runs:
+  using: docker
+  image: docker://ghcr.io/warhammer-mods/rpfm_cli-docker:develop
+  entrypoint: /bin/bash
+  args:
+    - -c
+    - rpfm_cli ${{ inputs.options }} --game ${{ inputs.game }} ${{ inputs.subcommand }} ${{ inputs.run }}

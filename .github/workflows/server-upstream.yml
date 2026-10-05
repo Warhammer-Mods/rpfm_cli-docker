@@ -11,6 +11,8 @@ on:
   pull_request:
     paths:
       - '.github/workflows/server-upstream.yml'
+      - 'action.yml'
+      - 'README.md'
       - 'server/upstream.py'
       - 'server/upstream.json'
       - 'server/tests/**'
@@ -105,7 +107,7 @@ jobs:
       - name: Prepare tested version update
         if: steps.plan.outputs.changed == 'true' && steps.pending.outputs.build == 'true' && github.event_name != 'pull_request'
         run: |
-          git diff --binary -- server/upstream.json server/Dockerfile server/action.yml server/compose.yaml server/smoke_test.py server/README.md > "$RUNNER_TEMP/rpfm-update.patch"
+          git diff --binary -- action.yml README.md server/upstream.json server/Dockerfile server/action.yml server/compose.yaml server/smoke_test.py server/README.md > "$RUNNER_TEMP/rpfm-update.patch"
           test -s "$RUNNER_TEMP/rpfm-update.patch"
       - name: Retain update patch
         if: steps.plan.outputs.changed == 'true' && steps.pending.outputs.build == 'true' && github.event_name != 'pull_request'
@@ -151,7 +153,7 @@ jobs:
           git checkout -b "$branch"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add server/upstream.json server/Dockerfile server/action.yml server/compose.yaml server/smoke_test.py server/README.md
+          git add action.yml README.md server/upstream.json server/Dockerfile server/action.yml server/compose.yaml server/smoke_test.py server/README.md
           # A previous attempt may have pushed the branch but lacked permission
           # to create its PR. Reuse an identical tree; never overwrite edits.
           prior=$(git ls-remote --heads origin "refs/heads/$branch" | awk '{print $1}')
