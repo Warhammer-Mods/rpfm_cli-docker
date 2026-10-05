@@ -65,6 +65,8 @@ class UpdateTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         shutil.copytree(ROOT / "server", self.root / "server", ignore=shutil.ignore_patterns("__pycache__"))
+        for name in ("action.yml", "README.md"):
+            shutil.copy2(ROOT / name, self.root / name)
         self.current = json.loads((self.root / upstream.MANIFEST).read_text())
         self.candidate = {"version": "5.1.2", "tag": "v5.1.2", "rpfm_commit": "a" * 40, "schema_commit": "b" * 40}
 
@@ -76,7 +78,7 @@ class UpdateTests(unittest.TestCase):
         upstream.apply_update(self.root, self.current, self.candidate)
         after = self.snapshot()
         changed = {p for p in before if before[p] != after[p]}
-        self.assertEqual(changed, {"server/Dockerfile", "server/action.yml", "server/compose.yaml", "server/smoke_test.py", "server/README.md", upstream.MANIFEST})
+        self.assertEqual(changed, {"action.yml", "README.md", "server/Dockerfile", "server/action.yml", "server/compose.yaml", "server/smoke_test.py", "server/README.md", upstream.MANIFEST})
         self.assertEqual(json.loads((self.root / upstream.MANIFEST).read_text()), self.candidate)
         docker = (self.root / "server/Dockerfile").read_text()
         self.assertEqual(docker.count("ARG RPFM_COMMIT=" + "a" * 40), 2)

@@ -1,13 +1,53 @@
-# rpfm_cli, Dockerized
+# RPFM Server in Docker
 
-For RPFM 5.1.1, which replaces the old CLI with RPFM Server, see the
-[new server container](server/README.md). The files below retain the legacy
-CLI interface.
+Start **RPFM 5.1.1** in GitHub Actions for Total War packfile operations over
+Streamable HTTP MCP or WebSocket. The action runs on Linux runners with Docker,
+mounts your checkout at `/work`, and builds the pinned backend unless you supply
+a prebuilt image.
 
-Usage:
-```sh
-docker run ghcr.io/warhammer-mods/rpfm_cli-docker --help
+## GitHub Actions
+
+```yaml
+jobs:
+  mod-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: Warhammer-Mods/rpfm_cli-docker@master
+        id: rpfm
+      - name: Run your pack script
+        env:
+          RPFM_MCP_URL: ${{ steps.rpfm.outputs.mcp-url }}
+        run: python3 scripts/build_mod.py
+      - name: Stop RPFM
+        if: always() && steps.rpfm.outputs.container != ''
+        env:
+          RPFM_CONTAINER: ${{ steps.rpfm.outputs.container }}
+        run: docker rm --force "$RPFM_CONTAINER"
 ```
-Learn more about RPFM, the ultimate modding tool for Total War games, on its [repository page](https://github.com/Frodo45127/rpfm) and [mdBook Manual](https://frodo45127.github.io/rpfm/).
 
-All credit goes to [Frodo45127](https://github.com/Frodo45127) and RPFM's [contributors](https://github.com/Frodo45127/rpfm/graphs/contributors).
+Replace `master` with a released tag or commit SHA for reproducible builds.
+`scripts/build_mod.py` is your own MCP client script; it is not included.
+See [the smoke test](server/smoke_test.py) for a Python standard-library MCP
+client example.
+
+Inputs: `image` (optional prebuilt Docker image) and `port` (default `45127`).
+Outputs: `url`, `mcp-url` and `container`. Remove the container in an `always()`
+cleanup step. The desktop GUI and former CLI arguments are not provided.
+
+See [the server guide](server/README.md) for Docker Compose, schemas, pack paths,
+client usage, CI validation and automatic stable-release builds. New releases
+are checked twice daily, built and tested before an update PR is opened.
+
+## Migration from the legacy CLI
+
+The root action now starts RPFM Server. Replace the former `game`, `options`,
+`subcommand` and `run` inputs with a script using MCP or WebSocket.
+The `/server` action remains available with the same server interface.
+The historical CLI action is preserved at `/legacy`; older tags and pinned
+commits keep their original behavior. Its existing container image is unchanged.
+The root Dockerfile is also historical; the current server Dockerfile is under
+`server/`.
+
+All credit for RPFM goes to [Frodo45127](https://github.com/Frodo45127/rpfm) and
+[RPFM's contributors](https://github.com/Frodo45127/rpfm/graphs/contributors).

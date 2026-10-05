@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'server/**'
+      - 'action.yml'
+      - 'README.md'
       - '.github/workflows/server-ci.yml'
   workflow_dispatch:
 permissions:
@@ -30,7 +32,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=rpfm-server
       - name: Start RPFM for this job
         id: rpfm
-        uses: ./server
+        uses: ./
         with:
           image: local/rpfm-server:${{ steps.version.outputs.version }}
       - name: Run MCP smoke test

@@ -4,8 +4,9 @@ This container runs **RPFM Server**, the current headless RPFM backend, with
 WebSocket and Streamable HTTP MCP access. It does not display the desktop GUI
 and does not implement the removed `rpfm_cli` command syntax.
 
-The root Dockerfile and existing GitHub Action remain the legacy CLI setup.
-This separate directory lets you try the new backend without replacing them.
+The root GitHub Action now starts this backend for Marketplace users.
+The `/server` action remains available; the historical CLI action is at `/legacy`.
+The root Dockerfile remains historical; use this directory to build the server.
 
 ## Build and start
 
@@ -65,7 +66,7 @@ do not require a full game installation.
 
 ## GitHub Actions
 
-Use the composite action in this directory on a Linux runner. It builds the
+Use the root composite action or the `/server` action on a Linux runner. It builds the
 pinned backend unless given a prebuilt image, waits for readiness, and mounts
 the job's repository at `/work`. It runs as the runner's UID/GID so saved packs
 can be read and uploaded by subsequent steps. Configuration is temporary for
