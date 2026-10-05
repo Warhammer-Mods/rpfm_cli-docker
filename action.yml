@@ -1,5 +1,8 @@
 name: 'RPFM CLI Docker'
 description: 'Manipulate Total War™ games packfiles with command line interface.'
+branding:
+  icon: 'package'
+  color: 'orange'
 inputs:
     game:
       description: |

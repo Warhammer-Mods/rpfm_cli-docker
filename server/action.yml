@@ -1,5 +1,8 @@
 name: RPFM Server
 description: Start RPFM 5.1.1 for pack operations over MCP or WebSocket in a Linux Actions job.
+branding:
+  icon: 'package'
+  color: 'orange'
 inputs:
   image:
     description: Optional prebuilt image. If empty, build the bundled pinned Dockerfile.
