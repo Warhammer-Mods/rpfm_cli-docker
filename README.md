@@ -1,6 +1,6 @@
 # RPFM Server in Docker
 
-Start **RPFM 5.1.1** in GitHub Actions for Total War packfile operations over
+Start **RPFM Server** in GitHub Actions for Total War packfile operations over
 Streamable HTTP MCP or WebSocket. The action runs on Linux runners with Docker,
 mounts your checkout at `/work`, and builds the pinned backend unless you supply
 a prebuilt image.
@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: Warhammer-Mods/rpfm-server-docker@v5.1.1-server.2
+      - uses: Warhammer-Mods/rpfm-server-docker@master
         id: rpfm
       - name: Run your pack script
         env:
@@ -26,8 +26,9 @@ jobs:
         run: docker rm --force "$RPFM_CONTAINER"
 ```
 
-The example targets release `v5.1.1-server.2`; its tag becomes available when
-that release is created. Pin a full commit SHA for immutable builds.
+The example follows `master`. Choose a published tag from [Releases](https://github.com/Warhammer-Mods/rpfm-server-docker/releases)
+or pin a full commit SHA for immutable builds.
+The bundled RPFM version and source pins are recorded in [server/upstream.json](server/upstream.json).
 `scripts/build_mod.py` is your own MCP client script; it is not included.
 See [the smoke test](server/smoke_test.py) for a Python standard-library MCP
 client example.

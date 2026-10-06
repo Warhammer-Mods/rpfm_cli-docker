@@ -1,5 +1,5 @@
 name: RPFM Server Docker
-description: Start RPFM 5.1.1 for pack operations over MCP or WebSocket in a Linux Actions job.
+description: Start RPFM Server for pack operations over MCP or WebSocket in a Linux Actions job.
 branding:
   icon: 'package'
   color: 'orange'
