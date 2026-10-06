@@ -75,27 +75,12 @@ def apply_update(root, current, candidate):
     docker = replace_exact(docker, 'image.version="' + current["version"] + '"',
                            'image.version="' + candidate["version"] + '"')
     replacements["server/Dockerfile"] = docker
-    for action_path in ("action.yml", "server/action.yml"):
-        action = (root / action_path).read_text()
-        replacements[action_path] = replace_exact(
-            action, "Start RPFM " + current["version"], "Start RPFM " + candidate["version"])
-    readme = (root / "README.md").read_text()
-    replacements["README.md"] = replace_exact(
-        readme, "**RPFM " + current["version"] + "**", "**RPFM " + candidate["version"] + "**")
     compose = (root / "server/compose.yaml").read_text()
     replacements["server/compose.yaml"] = replace_exact(
         compose, "local/rpfm-server:" + current["version"], "local/rpfm-server:" + candidate["version"])
     smoke = (root / "server/smoke_test.py").read_text()
     replacements["server/smoke_test.py"] = replace_exact(
         smoke, 'default="' + current["version"] + '"', 'default="' + candidate["version"] + '"')
-    readme = (root / "server/README.md").read_text()
-    readme = replace_exact(readme, "# RPFM " + current["version"] + " in Docker",
-                           "# RPFM " + candidate["version"] + " in Docker")
-    readme = replace_exact(readme, "official " + current["version"] + " commit",
-                           "official " + candidate["version"] + " commit")
-    readme = replace_exact(readme, '`' + current["rpfm_commit"] + '`', '`' + candidate["rpfm_commit"] + '`')
-    readme = replace_exact(readme, '`' + current["schema_commit"] + '`', '`' + candidate["schema_commit"] + '`')
-    replacements["server/README.md"] = readme
     replacements[MANIFEST] = json.dumps(candidate, indent=2) + "\n"
     for name, content in replacements.items():
         (root / name).write_text(content)

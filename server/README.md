@@ -1,4 +1,4 @@
-# RPFM 5.1.1 in Docker
+# RPFM Server in Docker
 
 This container runs **RPFM Server**, the current headless RPFM backend, with
 WebSocket and Streamable HTTP MCP access. It does not display the desktop GUI
@@ -66,8 +66,8 @@ do not require a full game installation.
 
 ## GitHub Actions
 
-The example targets release `v5.1.1-server.2`; its tag becomes available when
-that release is created. Pin a full commit SHA for immutable builds.
+The example follows `master`. Choose a published tag from [Releases](https://github.com/Warhammer-Mods/rpfm-server-docker/releases)
+or pin a full commit SHA for immutable builds.
 
 Use the root composite action or the `/server` action on a Linux runner. It builds the
 pinned backend unless given a prebuilt image, waits for readiness, and mounts
@@ -81,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: Warhammer-Mods/rpfm-server-docker/server@v5.1.1-server.2
+      - uses: Warhammer-Mods/rpfm-server-docker/server@master
         id: rpfm
       - name: Run your pack script
         env:
@@ -99,7 +99,6 @@ jobs:
         run: docker rm --force "$RPFM_CONTAINER"
 ```
 
-This example pins the action to the commit validated by the workflow below.
 `scripts/build_mod.py` and `output/*.pack` illustrate where your own build
 script and outputs go; they are not included. Your script needs an MCP or
 WebSocket client, since the former CLI arguments are not supported. Use
@@ -175,9 +174,9 @@ docker compose down
 This keeps the named configuration volume. `docker compose down -v` removes
 it, including configuration, schema updates, caches and any stored autosaves.
 
-RPFM source is pinned to the official 5.1.1 commit
-`5204dab9e9a9376c438deabed8489de3bc319599`. The initial schema checkout is
-pinned to `5d841c5c2a73d27495c6fed7282dc011c5517e1c`, matching that release.
+The bundled RPFM version, official release tag, source commit and matching
+schema commit are recorded in [upstream.json](upstream.json). The Dockerfile
+uses those source and schema pins for the initial checkout.
 Existing schema checkouts are retained on restart; use the server's schema
 update tool when definitions change. Building a newer image alone does not
 replace schemas in an existing configuration volume.
@@ -190,7 +189,7 @@ tag and expected smoke-test version together, followed by a fresh build/test.
 
 ## Docker adaptations
 
-RPFM 5.1.1 hard-codes its listener to `127.0.0.1:45127`. Rather than editing
+The pinned RPFM backend hard-codes its listener to `127.0.0.1:45127`. Rather than editing
 upstream Rust code, a small `socat` proxy forwards container port 45128 to
 that listener. Compose maps host localhost port 45127 to container port 45128.
 `tini` and the entrypoint supervise both processes and forward shutdowns.
@@ -213,7 +212,9 @@ GitHub-hosted Linux runner, including 155 MCP tools, WH3 schema loading,
 pack creation and saving/reopening through the mounted workspace.
 
 [Successful CI run](https://github.com/Warhammer-Mods/rpfm-server-docker/actions/runs/37256097535)
-validated commit `d8e9d8c2cea27c04657431b70f3cf890aeffd8d9`.
+validated historical commit `d8e9d8c2cea27c04657431b70f3cf890aeffd8d9`.
+Check the selected action ref against its own CI results; this historical run
+does not establish validation of the current `master`.
 This validates the headless backend workflow, not every RPFM operation or
 in-game compatibility of packs created with it.
 

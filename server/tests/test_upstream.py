@@ -78,14 +78,14 @@ class UpdateTests(unittest.TestCase):
         upstream.apply_update(self.root, self.current, self.candidate)
         after = self.snapshot()
         changed = {p for p in before if before[p] != after[p]}
-        self.assertEqual(changed, {"action.yml", "README.md", "server/Dockerfile", "server/action.yml", "server/compose.yaml", "server/smoke_test.py", "server/README.md", upstream.MANIFEST})
+        self.assertEqual(changed, {"server/Dockerfile", "server/compose.yaml", "server/smoke_test.py", upstream.MANIFEST})
         self.assertEqual(json.loads((self.root / upstream.MANIFEST).read_text()), self.candidate)
         docker = (self.root / "server/Dockerfile").read_text()
         self.assertEqual(docker.count("ARG RPFM_COMMIT=" + "a" * 40), 2)
         self.assertIn("37256097535", (self.root / "server/README.md").read_text())
 
     def test_layout_mismatch_does_not_partially_write(self):
-        path = self.root / "server/README.md"
+        path = self.root / "server/Dockerfile"
         path.write_text("Layout changed upstream")
         before = self.snapshot()
         with self.assertRaises(ValueError):
